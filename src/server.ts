@@ -1,6 +1,7 @@
 import express from 'express'
+import logger from "./utils/logger";
 
 const app = express()
 
 const PORT = process.env.PORT||4000
-app.listen(PORT,()=>console.log(`Listening on port: ${PORT}`))
+app.listen(PORT,()=>logger.info(`Listening on port: ${PORT}`))
