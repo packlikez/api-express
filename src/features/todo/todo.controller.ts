@@ -1,20 +1,38 @@
-import logger from "../../utils/logger";
+import { Request, Response } from "express";
+
+import todoService from "./todo.service";
 
 class TodoController {
-  getTasks() {
-    logger.info("getTasks");
+  async getTasks(req: Request, res: Response) {
+    const tasks = await todoService.getTasks();
+    return res.send(tasks);
   }
-  createTask() {
-    logger.info("createTask");
+
+  async createTask(req: Request, res: Response) {
+    const task = req.body;
+    const newTask = await todoService.createTask(task);
+    return res.send(newTask);
   }
-  updateTask() {
-    logger.info("updateTask");
+
+  async updateTask(req: Request, res: Response) {
+    const { taskId } = req.params;
+    const task = req.body;
+    const newTask = await todoService.updateTask(taskId, task);
+    return res.send(newTask);
   }
-  createSubTask() {
-    logger.info("createSubTask");
+
+  async createSubTask(req: Request, res: Response) {
+    const { taskId } = req.params;
+    const task = req.body;
+    const newSubTask = await todoService.createSubTask(taskId, task);
+    return res.send(newSubTask);
   }
-  updateSubTask() {
-    logger.info("updateSubTask");
+
+  async updateSubTask(req: Request, res: Response) {
+    const { taskId, subTaskId } = req.params;
+    const task = req.body;
+    const newSubTask = await todoService.updateSubTask(taskId, subTaskId, task);
+    return res.send(newSubTask);
   }
 }
 
