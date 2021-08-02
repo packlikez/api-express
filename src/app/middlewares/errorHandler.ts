@@ -1,5 +1,6 @@
 import { ErrorRequestHandler } from "express";
 import Boom from "@hapi/boom";
+import logger from "../../utils/logger";
 
 const middlewareErrorHandler: ErrorRequestHandler = (
   err: Boom.Boom,
@@ -7,6 +8,8 @@ const middlewareErrorHandler: ErrorRequestHandler = (
   res,
   next
 ) => {
+  logger.error(err);
+
   if (err.isBoom) {
     const { output, data } = err;
     return res
