@@ -1,8 +1,8 @@
 import express from "express";
-import todoRouter from "./features/todo/todo.route";
+import taskRouter from "./features/task/task.route";
 
 const router = express.Router();
 
-router.use("/todos", todoRouter);
+router.use("/tasks", taskRouter);
 
 export default router;
