@@ -1,5 +1,8 @@
+import Boom from "@hapi/boom";
+
 import taskModel from "./task.model";
 import db from "../../app/db";
+import { ServiceResponse } from "../../app/type";
 
 type TaskId = number;
 
@@ -12,18 +15,28 @@ interface UpdateTask {
 }
 
 class TaskService {
-  async getTasks() {
-    return taskModel.findAll({
-      where: { parentId: null },
-      include: [{ model: taskModel, as: "subTasks" }],
-    });
+  async getTasks(): ServiceResponse {
+    try {
+      const data = await taskModel.findAll({
+        where: { parentId: null },
+        include: [{ model: taskModel, as: "subTasks" }],
+      });
+      return { data };
+    } catch (e) {
+      return { error: e };
+    }
   }
 
-  async createTask(task: CreateTask) {
-    return taskModel.create(task);
+  async createTask(task: CreateTask): ServiceResponse {
+    try {
+      const data = await taskModel.create(task);
+      return { data };
+    } catch (e) {
+      return { error: e };
+    }
   }
 
-  async updateTask(taskId: TaskId, task: UpdateTask) {
+  async updateTask(taskId: TaskId, task: UpdateTask): ServiceResponse {
     let transaction;
     try {
       transaction = await db.transaction();
@@ -35,49 +48,66 @@ class TaskService {
         );
       }
 
-      const result = await taskModel.update(task, {
+      const data = await taskModel.update(task, {
         where: { id: taskId },
         transaction,
+        returning: true,
       });
+      if (data[0] < 1) throw Boom.resourceGone(`There is no task ID ${taskId}`);
 
       await transaction.commit();
-      return result;
+      return { data: data[1][0] };
     } catch (e) {
       if (transaction) await transaction.rollback();
-      return { err: e };
+      return { error: e };
     }
   }
 
-  async createSubTask(taskId: TaskId, task: CreateTask) {
+  async createSubTask(taskId: TaskId, task: CreateTask): ServiceResponse {
     try {
-      return taskModel.create({ ...task, parentId: taskId });
+      const findParent = await taskModel.findByPk(taskId);
+      if (!findParent) throw Boom.notFound(`There is not task ID ${taskId}`);
+
+      const data = await taskModel.create({ ...task, parentId: taskId });
+      return { data };
     } catch (e) {
-      return { err: e };
+      return { error: e };
     }
   }
 
-  async updateSubTask(taskId: TaskId, subTaskId: TaskId, task: UpdateTask) {
+  async updateSubTask(
+    taskId: TaskId,
+    subTaskId: TaskId,
+    task: UpdateTask
+  ): ServiceResponse {
     let transaction;
     try {
       transaction = await db.transaction();
 
       if (!task.done) {
-        await taskModel.update(
+        const updatedParent = await taskModel.update(
           { done: false },
           { where: { id: taskId }, transaction }
         );
+        if (updatedParent[0] < 1)
+          throw Boom.resourceGone(`There is no task ID ${taskId}`);
       }
 
-      const result = await taskModel.update(task, {
-        where: { id: subTaskId },
+      const data = await taskModel.update(task, {
+        where: { id: subTaskId, parentId: taskId },
         transaction,
+        returning: true,
       });
+      if (data[0] < 1)
+        throw Boom.resourceGone(
+          `There is no sub task ID ${subTaskId} which is under task ID ${taskId}`
+        );
 
       await transaction.commit();
-      return result;
+      return { data: data[1][0] };
     } catch (e) {
       if (transaction) await transaction.rollback();
-      return { err: e };
+      return { error: e };
     }
   }
 }
