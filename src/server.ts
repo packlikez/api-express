@@ -1,14 +1,25 @@
 import express from "express";
+import bodyParser from "body-parser";
 
 import logger from "./utils/logger";
 import routes from "./routes";
 import db from "./app/db";
 
+import middlewareLogger from "./app/middlewares/logger";
+import middlewareErrorHandler from "./app/middlewares/errorHandler";
+
+db.sync({ force: true })
+  .then(() => logger.info("Sync database successfully"))
+  .catch(logger.error);
+
 const app = express();
 
-db.sync({ force: true }).then(logger.info).catch(logger.error);
+app.use(bodyParser.json());
+app.use(middlewareLogger);
 
 app.use(routes);
+
+app.use(middlewareErrorHandler);
 
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => logger.info(`Listening on port: ${PORT}`));
