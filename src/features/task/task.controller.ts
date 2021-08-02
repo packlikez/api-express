@@ -1,6 +1,14 @@
 import { Request, Response, NextFunction } from "express";
 
 import taskService from "./task.service";
+import Joi from "joi";
+import validator from "../../utils/validator";
+
+const createTaskSchema = Joi.object({ title: Joi.string().trim().required() });
+
+const updateTaskSchema = Joi.object({ done: Joi.boolean().required() });
+
+const taskIdSchema = Joi.number().required();
 
 class TaskController {
   async getTasks(req: Request, res: Response, next: NextFunction) {
@@ -14,7 +22,7 @@ class TaskController {
 
   async createTask(req: Request, res: Response, next: NextFunction) {
     try {
-      const task = req.body;
+      const task = validator(createTaskSchema, req.body);
 
       const newTask = await taskService.createTask(task);
 
@@ -26,10 +34,10 @@ class TaskController {
 
   async updateTask(req: Request, res: Response, next: NextFunction) {
     try {
-      const { taskId } = req.params;
-      const task = req.body;
+      const taskId = validator(taskIdSchema, req.params.taskId);
+      const task = validator(updateTaskSchema, req.body);
 
-      const newTask = await taskService.updateTask(parseInt(taskId), task);
+      const newTask = await taskService.updateTask(taskId, task);
 
       return res.send(newTask);
     } catch (e) {
@@ -39,13 +47,10 @@ class TaskController {
 
   async createSubTask(req: Request, res: Response, next: NextFunction) {
     try {
-      const { taskId } = req.params;
-      const task = req.body;
+      const taskId = validator(taskIdSchema, req.params.taskId);
+      const task = validator(createTaskSchema, req.body);
 
-      const newSubTask = await taskService.createSubTask(
-        parseInt(taskId),
-        task
-      );
+      const newSubTask = await taskService.createSubTask(taskId, task);
 
       return res.send(newSubTask);
     } catch (e) {
@@ -55,12 +60,13 @@ class TaskController {
 
   async updateSubTask(req: Request, res: Response, next: NextFunction) {
     try {
-      const { taskId, subTaskId } = req.params;
-      const task = req.body;
+      const taskId = validator(taskIdSchema, req.params.taskId);
+      const subTaskId = validator(taskIdSchema, req.params.subTaskId);
+      const task = validator(updateTaskSchema, req.body);
 
       const newSubTask = await taskService.updateSubTask(
-        parseInt(taskId),
-        parseInt(subTaskId),
+        taskId,
+        subTaskId,
         task
       );
 
