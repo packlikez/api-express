@@ -1,5 +1,6 @@
 import express from "express";
 import bodyParser from "body-parser";
+import cors from "cors";
 
 import logger from "./utils/logger";
 import routes from "./routes";
@@ -14,8 +15,9 @@ db.sync({ force: true })
 
 const app = express();
 
-app.use(bodyParser.json());
 app.use(middlewareLogger);
+app.use(cors());
+app.use(bodyParser.json());
 
 app.use(routes);
 
