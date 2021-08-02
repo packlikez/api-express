@@ -3,6 +3,7 @@ import Boom from "@hapi/boom";
 import taskModel from "./task.model";
 import db from "../../app/db";
 import { ServiceResponse } from "../../app/type";
+import { Transaction } from "sequelize";
 
 type TaskId = number;
 
@@ -14,7 +15,25 @@ interface UpdateTask {
   done: boolean;
 }
 
+interface Options {
+  transaction: Transaction;
+}
+
 class TaskService {
+  async getTask(taskId: TaskId, options?: Options): ServiceResponse {
+    try {
+      const data = await taskModel.findByPk(taskId, {
+        include: [{ model: taskModel, as: "subTasks" }],
+        transaction: options?.transaction,
+      });
+      if (!data) throw Boom.notFound(`There is no task ID ${taskId}`);
+
+      return { data };
+    } catch (e) {
+      return { error: e };
+    }
+  }
+
   async getTasks(): ServiceResponse {
     try {
       const data = await taskModel.findAll({
@@ -29,8 +48,13 @@ class TaskService {
 
   async createTask(task: CreateTask): ServiceResponse {
     try {
-      const data = await taskModel.create(task);
-      return { data };
+      const createdTask = await taskModel.create(task);
+      if (!createdTask) throw Boom.internal("Create task failed");
+
+      const newTask = await this.getTask(createdTask.id);
+      if (newTask.error) throw newTask.error;
+
+      return { data: newTask.data };
     } catch (e) {
       return { error: e };
     }
@@ -48,15 +72,19 @@ class TaskService {
         );
       }
 
-      const data = await taskModel.update(task, {
+      const updatedTask = await taskModel.update(task, {
         where: { id: taskId },
         transaction,
         returning: true,
       });
-      if (data[0] < 1) throw Boom.resourceGone(`There is no task ID ${taskId}`);
+      if (updatedTask[0] < 1)
+        throw Boom.resourceGone(`There is no task ID ${taskId}`);
+
+      const newTask = await this.getTask(taskId, { transaction });
+      if (newTask.error) throw newTask.error;
 
       await transaction.commit();
-      return { data: data[1][0] };
+      return { data: newTask.data };
     } catch (e) {
       if (transaction) await transaction.rollback();
       return { error: e };
