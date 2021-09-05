@@ -5,6 +5,33 @@ import { mockTx } from "../../mocks/transaction";
 import Boom from "@hapi/boom";
 
 describe("Task Service", () => {
+  describe("GetTask", () => {
+    it("should successfully get task, when there is no task", async () => {
+      const task = null;
+      jest.spyOn(taskModel, "findByPk").mockResolvedValue(task);
+
+      const result = await taskService.getTask(1);
+      expect(result).toEqual({ error: Boom.notFound(`There is no task ID 1`) });
+    });
+
+    it("should successfully get task, when there is a task", async () => {
+      const task = taskModel.build({ title: "Task 1", done: false });
+      jest.spyOn(taskModel, "findByPk").mockResolvedValue(task);
+
+      const result = await taskService.getTask(1);
+      expect(result).toEqual({ data: task });
+    });
+
+    it("should failed to get task, when orm throw a error", async () => {
+      const error = new Error();
+      jest.spyOn(taskModel, "findByPk").mockRejectedValue(error);
+
+      const result = await taskService.getTask(1);
+
+      expect(result).toEqual({ error });
+    });
+  });
+
   describe("GetTasks", () => {
     it("should successfully get tasks, when there is no task", async () => {
       jest.spyOn(taskModel, "findAll").mockResolvedValue([]);
@@ -40,9 +67,9 @@ describe("Task Service", () => {
     it("should successfully create a task", async () => {
       const task = taskModel.build({ title: "Task 1", done: false });
       jest.spyOn(taskModel, "create").mockResolvedValue(task);
+      jest.spyOn(taskModel, "findByPk").mockResolvedValue(task);
 
       const result = await taskService.createTask({ title: "Task 1" });
-
       expect(result).toEqual({ data: task });
     });
 
@@ -63,12 +90,12 @@ describe("Task Service", () => {
       const updatedTask = taskModel.build({ title: "Task 1", done: true });
 
       jest.spyOn(db, "transaction").mockResolvedValue(mockTx.tx);
+      jest.spyOn(taskModel, "findByPk").mockResolvedValue(updatedTask);
       const taskUpdate = jest
         .spyOn(taskModel, "update")
         .mockResolvedValue([1, [updatedTask]]);
 
       const result = await taskService.updateTask(taskId, updateTask);
-
       expect(taskUpdate).toBeCalledTimes(2);
       expect(mockTx.commit).toBeCalled();
       expect(result).toEqual({ data: updatedTask });
@@ -80,6 +107,7 @@ describe("Task Service", () => {
       const updatedTask = taskModel.build({ title: "Task 1", done: true });
 
       jest.spyOn(db, "transaction").mockResolvedValue(mockTx.tx);
+      jest.spyOn(taskModel, "findByPk").mockResolvedValue(updatedTask);
       const taskUpdate = jest
         .spyOn(taskModel, "update")
         .mockResolvedValue([1, [updatedTask]]);
